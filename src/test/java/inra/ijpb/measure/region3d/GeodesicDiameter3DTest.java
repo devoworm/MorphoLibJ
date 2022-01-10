@@ -100,26 +100,4 @@ public class GeodesicDiameter3DTest
 		assertEquals(15.06, table.getValue("GeodesicDiameter", 0), 0.1);
 		assertEquals(5.0, table.getValue("Radius", 0), 0.1);
 	}
-
-//	/**
-//	 * Test method for {@link inra.ijpb.measure.region3d.GeodesicDiameter3D#analyzeImage(ij.ImageStack)}.
-//	 */
-//	@Test
-//	public void testAnalyzeImage_BatCochlea()
-//	{
-//		String fileName = getClass().getResource("/files/bat-cochlea-volume.tif").getFile();
-//		ImagePlus imagePlus = IJ.openImage(fileName);
-//		
-//		assertNotNull(imagePlus);
-//	
-//		assertTrue(imagePlus.getStackSize() > 0);
-//	
-//		ImageStack image = imagePlus.getStack();
-//	
-//		GeodesicDiameter3D algo = new GeodesicDiameter3D(ChamferMask3D.BORGEFORS);
-//		ResultsTable table = algo.computeTable(imagePlus);
-//
-//		assertEquals(1, table.getCounter());
-//	}
-
 }

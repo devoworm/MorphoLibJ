@@ -23,7 +23,6 @@ package inra.ijpb.plugins;
 
 import ij.IJ;
 import ij.ImagePlus;
-import ij.ImageStack;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.measure.ResultsTable;
@@ -97,12 +96,11 @@ public class GeodesicDiameter3DPlugin implements PlugIn
 			return;
 		}
 		
-		// extract label ImageProcessor
-		ImageStack labelImage = labelPlus.getStack();
-		
 		// Compute geodesic diameters, using floating-point calculations
 		long start = System.nanoTime();
-		ResultsTable table = process(labelImage, chamferMask);
+		GeodesicDiameter3D algo = new GeodesicDiameter3D(chamferMask);
+		DefaultAlgoListener.monitor(algo);
+		ResultsTable table = algo.computeTable(labelPlus);
 		long finalTime = System.nanoTime();
 		
 		// Final time, displayed in milliseconds
@@ -129,28 +127,5 @@ public class GeodesicDiameter3DPlugin implements PlugIn
 				break;
 			}
 		}
-	}
-
-	
-	// ====================================================
-	// Computing functions 
-	
-	/**
-	 * Compute the table of geodesic parameters, when the weights are given as
-	 * floating point values.
-	 * 
-	 * @param labels
-	 *            the label image of the particles
-	 * @param chamferMask
-	 *            the weights to use
-	 * @return a new ResultsTable object containing the geodesic diameter of
-	 *         each label
-	 */
-	public ResultsTable process(ImageStack labels, ChamferMask3D chamferMask)
-	{
-		GeodesicDiameter3D algo = new GeodesicDiameter3D(chamferMask);
-		DefaultAlgoListener.monitor(algo);
-		ResultsTable table = algo.process(labels);
-		return table;
 	}
 }

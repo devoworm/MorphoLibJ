@@ -55,7 +55,7 @@ import inra.ijpb.label.LabelValues.Position3DValuePair;
  * </pre>
  *
  * @see inra.ijpb.measure.region2d.GeodesicDiameter
- * @see inra.ijpb.binary.ChamferMask3D
+ * @see inra.ijpb.binary.distmap.ChamferMask3D
  * 
  * @author dlegland
  *
@@ -91,139 +91,7 @@ public class GeodesicDiameter3D extends RegionAnalyzer3D<GeodesicDiameter3D.Resu
 		this.chamferMask = mask;
 	}
 	
-	
-	// ==================================================
-	// Processing methods
-	
-	public ResultsTable process(ImageStack labelImage)
-	{
-		// Check validity of parameters
-		if (labelImage==null) return null;
-		
-		// identify labels within image
-		int[] labels = LabelImages.findAllLabels(labelImage);
-		
-		Result[] results = analyzeRegions(labelImage, labels, new Calibration());
-		Map<Integer, Result> map = createMap(labels, results);
-		
-		return createTable(map);
-		
-//		// Create calculator for propagating distances
-//		GeodesicDistanceTransform3D geodDistMapAlgo;
-//		geodDistMapAlgo = new GeodesicDistanceTransform3DFloat(this.chamferMask, false);
-//		geodDistMapAlgo.addAlgoListener(this);
-//
-//		// The array that stores Chamfer distances 
-//		ImageStack distanceMap;
-//		
-//		// Initialize mask as binarisation of labels
-//		ImageStack mask = BinaryImages.binarize(labelImage);
-//		
-//		// Initialize marker as complement of all labels
-//		ImageStack marker = createMarkerOutsideLabels(labelImage);
-//
-//		this.currentStep = "initCenters";
-//		this.fireStatusChanged(this, "Initializing pseudo geodesic centers...");
-//
-//		// first distance propagation to find an arbitrary center
-//		distanceMap = geodDistMapAlgo.geodesicDistanceMap(marker, mask);
-//		
-//		// Extract position of maxima
-//		Cursor3D[] posCenter = findPositionOfMaxValues(distanceMap, labelImage, labels);
-//		
-//		float[] radii = findMaxValues(distanceMap, labelImage, labels);
-//		
-//		// Create new marker image with position of maxima
-//		Images3D.fill(marker, 0);
-//		for (int i = 0; i < nbLabels; i++) 
-//		{
-//			Cursor3D pos = posCenter[i];
-//			if (pos.getX() == -1) 
-//			{
-//				IJ.showMessage("Particle Not Found", 
-//						"Could not find maximum for particle label " + i);
-//				continue;
-//			}
-//			marker.setVoxel(pos.getX(), pos.getY(), pos.getZ(), 255);
-//		}
-//		
-//		this.currentStep = "firstEnds";
-//		this.fireStatusChanged(this, "Computing first geodesic extremities...");
-//
-//		// Second distance propagation from first maximum
-//		distanceMap = geodDistMapAlgo.geodesicDistanceMap(marker, mask);
-//
-//		// find position of maximal value,
-//		// this is expected to correspond to a geodesic extremity 
-//		Cursor3D[] pos1 = findPositionOfMaxValues(distanceMap, labelImage, labels);
-//		
-//		// Create new marker image with position of maxima
-//		Images3D.fill(marker, 0);
-//		for (int i = 0; i < nbLabels; i++) 
-//		{
-//			Cursor3D pos = pos1[i];
-//			if (pos.getX() == -1) 
-//			{
-//				IJ.showMessage("Particle Not Found", 
-//						"Could not find maximum for particle label " + i);
-//				continue;
-//			}
-//			marker.setVoxel(pos.getX(), pos.getY(), pos.getZ(), 255);
-//		}
-//		
-//		this.currentStep = "secondEnds";
-//		this.fireStatusChanged(this, "Computing second geodesic extremities...");
-//
-//		// third distance propagation from second maximum
-//		distanceMap = geodDistMapAlgo.geodesicDistanceMap(marker, mask);
-//		
-//		// compute max distance constrained to each label,
-//		float[] values = findMaxValues(distanceMap, labelImage, labels);
-//		//System.out.println("value: " + value);
-//		Cursor3D[] pos2 = findPositionOfMaxValues(distanceMap, labelImage, labels);
-//		
-//		
-//		// retrieve the minimum weight
-//		double w0 = Double.POSITIVE_INFINITY;
-//		for (FloatOffset offset : this.chamferMask.getFloatOffsets())
-//		{
-//			w0 = Math.min(w0, offset.weight);
-//		}
-//
-//		// Initialize a new results table
-//		ResultsTable table = new ResultsTable();
-//
-//		// populate the results table with features of each label
-//		for (int i = 0; i < nbLabels; i++) 
-//		{
-//			// Small conversion to normalize to pixel distances
-//			double radius = ((double) radii[i]) / w0;
-//			double value = ((double) values[i]) / w0 + 1;
-//			
-//			// add an entry to the resulting data table
-//			table.incrementCounter();
-//			table.addValue("Label", labels[i]);
-//			table.addValue("Geod. Diam.", value);
-//			table.addValue("Radius", radius);
-//			table.addValue("Geod. Elong.", Math.max(value / (radius * 2), 1.0));
-//			table.addValue("xi", posCenter[i].getX());
-//			table.addValue("yi", posCenter[i].getY());
-//			table.addValue("zi", posCenter[i].getZ());
-//			table.addValue("x1", pos1[i].getX());
-//			table.addValue("y1", pos1[i].getY());
-//			table.addValue("z1", pos1[i].getZ());
-//			table.addValue("x2", pos2[i].getX());
-//			table.addValue("y2", pos2[i].getY());
-//			table.addValue("z2", pos2[i].getZ());
-//		}
-//
-//		return table;
-	}
 
-
-	// ==================================================
-	// Implementation of AlgoListener interface 
-	
 	// ==================================================
 	// Processing methods
 	
@@ -266,137 +134,140 @@ public class GeodesicDiameter3D extends RegionAnalyzer3D<GeodesicDiameter3D.Resu
 
 
 	/**
-		 * Computes the geodesic diameter of each particle within the given label
-		 * image.
-		 * 
-		 * @param labelImage
-		 *            a 3D label image, containing either the label of a particle or
-		 *            region, or zero for background
-		 * @param the
-		 *            array of region labels to process
-		 * @param calin
-		 *            the spatial calibration if the image
-		 * @return an array of Result instances containing for each label the
-		 *         geodesic diameter of the corresponding particle
-		 */
-		@Override
-		public Result[] analyzeRegions(ImageStack labelImage, int[] labels,
-				Calibration calib)
+	 * Computes the geodesic diameter of each particle within the given label
+	 * image.
+	 * 
+	 * @param labelImage
+	 *            a 3D label image, containing either the label of a particle or
+	 *            region, or zero for background
+	 * @param labels
+	 *            the array of region labels to process
+	 * @param calib
+	 *            the spatial calibration if the image
+	 * @return an array of Result instances containing for each label the
+	 *         geodesic diameter of the corresponding particle
+	 */
+	@Override
+	public Result[] analyzeRegions(ImageStack labelImage, int[] labels,
+			Calibration calib)
+	{
+		// Initial check-up
+		if (calib.pixelWidth != calib.pixelHeight || calib.pixelWidth != calib.pixelDepth)
 		{
-			// Initial check-up
-			if (calib.pixelWidth != calib.pixelHeight || calib.pixelWidth != calib.pixelDepth)
-			{
-				throw new RuntimeException("Requires image with cubic voxels");
-			}
-	
-			// number of labels to process
-			int nLabels = labels.length;
-			
-			// Create new marker image
-			int sizeX = labelImage.getWidth();
-			int sizeY = labelImage.getHeight();
-			int sizeZ = labelImage.size();
-			
-			// Create calculator for computing geodesic distances within label image
-			GeodesicDistanceTransform3D gdt;
-			gdt = new GeodesicDistanceTransform3DFloat(this.chamferMask, false);
-			gdt.addAlgoListener(this);
-	
-			
-			ImageStack marker = ImageStack.create(sizeX, sizeY, sizeZ, 8);
-			
-			// Compute distance map from label borders to identify centers
-			// (The distance map correctly processes adjacent borders)
-			this.fireStatusChanged(this, "Initializing pseudo geodesic centers...");
-			ImageStack distanceMap = LabelImages.distanceMap(labelImage, chamferMask, true, false);
-		
-			// Extract position of maxima
-			Position3DValuePair[] innerCircles = LabelValues.findMaxValues(distanceMap, labelImage, labels);
-			
-			// initialize marker image with position of maxima
-			Images3D.fill(marker, 0);
-			for (int i = 0; i < nLabels; i++) 
-			{
-				Cursor3D center = innerCircles[i].getPosition();
-				if (center.getX() == -1)
-				{
-					IJ.showMessage("Particle Not Found", 
-							"Could not find maximum for particle label " + labels[i]);
-					continue;
-				}
-				marker.setVoxel(center.getX(), center.getY(), center.getZ(), 255);
-			}
-		
-			this.fireStatusChanged(this, "Computing first geodesic extremities...");
-		
-			// Second distance propagation from first maximum
-			distanceMap = gdt.geodesicDistanceMap(marker, labelImage);
-			
-			// find position of maximal value for each label
-			// this is expected to correspond to a geodesic extremity 
-			Cursor3D[] firstGeodesicExtremities = LabelValues.findPositionOfMaxValues(distanceMap, labelImage, labels);
-			
-			// Create new marker image with position of maxima
-			Images3D.fill(marker, 0);
-			for (int i = 0; i < nLabels; i++)
-			{
-				Cursor3D pos = firstGeodesicExtremities[i];
-				if (pos.getX() == -1) 
-				{
-					IJ.showMessage("Particle Not Found", 
-							"Could not find maximum for particle label " + labels[i]);
-					continue;
-				}
-				marker.setVoxel(pos.getX(), pos.getY(), pos.getZ(), 255);
-			}
-			
-			this.fireStatusChanged(this, "Computing second geodesic extremities...");
-		
-			// third distance propagation from second maximum
-			distanceMap = gdt.geodesicDistanceMap(marker, labelImage);
-			
-			// also computes position of maxima
-			Position3DValuePair[] secondGeodesicExtremities = LabelValues.findMaxValues(distanceMap, labelImage, labels);
-			
-			// Create array of results and populate with computed values
-			GeodesicDiameter3D.Result[] result = new GeodesicDiameter3D.Result[nLabels];
-			double w0 = chamferMask.getNormalizationWeight();
-			for (int i = 0; i < nLabels; i++)
-			{
-				Result res = new Result();
-						
-				// Get the maximum distance within each label
-				double diam = secondGeodesicExtremities[i].getValue();
-				// and add sqrt(3) to take into account maximum voxel thickness
-				// and normalize by first weight of chamfer mask
-				res.diameter = diam / w0 + Math.sqrt(3);
-				
-				// also keep references to characteristic points
-				res.initialPoint = innerCircles[i].getPosition();
-				res.innerRadius = innerCircles[i].getValue() / w0;
-				res.firstExtremity = firstGeodesicExtremities[i];
-				res.secondExtremity = secondGeodesicExtremities[i].getPosition();
-				
-				// store the result
-				result[i] = res;
-			}
-			
-	//		// calibrate the results
-	//		if (calib.scaled())
-	//		{
-	//			this.fireStatusChanged(this, "Re-calibrating results");
-	//			for (int i = 0; i < nLabels; i++)
-	//			{
-	//				result[i] = result[i].recalibrate(calib);
-	//			}
-	//		}
-			
-			// returns the results
-			return result;
+			throw new RuntimeException("Requires image with cubic voxels");
 		}
 
+		// number of labels to process
+		int nLabels = labels.length;
 
-	@Override
+		// Create new marker image
+		int sizeX = labelImage.getWidth();
+		int sizeY = labelImage.getHeight();
+		int sizeZ = labelImage.size();
+
+		// Create calculator for computing geodesic distances within label image
+		GeodesicDistanceTransform3D gdt;
+		gdt = new GeodesicDistanceTransform3DFloat(this.chamferMask, false);
+		gdt.addAlgoListener(this);
+
+
+		ImageStack marker = ImageStack.create(sizeX, sizeY, sizeZ, 8);
+
+		// Compute distance map from label borders to identify centers
+		// (The distance map correctly processes adjacent borders)
+		this.fireStatusChanged(this, "Initializing pseudo geodesic centers...");
+		ImageStack distanceMap = LabelImages.distanceMap(labelImage, chamferMask, true, false);
+
+		// Extract position of maxima
+		Position3DValuePair[] innerCircles = LabelValues.findMaxValues(distanceMap, labelImage, labels);
+
+		// initialize marker image with position of maxima
+		Images3D.fill(marker, 0);
+		for (int i = 0; i < nLabels; i++) 
+		{
+			Cursor3D center = innerCircles[i].getPosition();
+			if (center.getX() == -1)
+			{
+				IJ.showMessage("Particle Not Found", 
+						"Could not find maximum for particle label " + labels[i]);
+				continue;
+			}
+			marker.setVoxel(center.getX(), center.getY(), center.getZ(), 255);
+		}
+
+		this.fireStatusChanged(this, "Computing first geodesic extremities...");
+
+		// Second distance propagation from first maximum
+		distanceMap = gdt.geodesicDistanceMap(marker, labelImage);
+
+		// find position of maximal value for each label
+		// this is expected to correspond to a geodesic extremity 
+		Cursor3D[] firstGeodesicExtremities = LabelValues.findPositionOfMaxValues(distanceMap, labelImage, labels);
+
+		// Create new marker image with position of maxima
+		Images3D.fill(marker, 0);
+		for (int i = 0; i < nLabels; i++)
+		{
+			Cursor3D pos = firstGeodesicExtremities[i];
+			if (pos.getX() == -1) 
+			{
+				IJ.showMessage("Particle Not Found", 
+						"Could not find maximum for particle label " + labels[i]);
+				continue;
+			}
+			marker.setVoxel(pos.getX(), pos.getY(), pos.getZ(), 255);
+		}
+
+		this.fireStatusChanged(this, "Computing second geodesic extremities...");
+
+		// third distance propagation from second maximum
+		distanceMap = gdt.geodesicDistanceMap(marker, labelImage);
+
+		// also computes position of maxima
+		Position3DValuePair[] secondGeodesicExtremities = LabelValues.findMaxValues(distanceMap, labelImage, labels);
+
+		// Create array of results and populate with computed values
+		GeodesicDiameter3D.Result[] result = new GeodesicDiameter3D.Result[nLabels];
+		double w0 = chamferMask.getNormalizationWeight();
+		for (int i = 0; i < nLabels; i++)
+		{
+			Result res = new Result();
+
+			// Get the maximum distance within each label
+			double diam = secondGeodesicExtremities[i].getValue();
+			// and add sqrt(3) to take into account maximum voxel thickness
+			// and normalize by first weight of chamfer mask
+			res.diameter = diam / w0 + Math.sqrt(3);
+
+			// also keep references to characteristic points
+			res.initialPoint = innerCircles[i].getPosition();
+			res.innerRadius = innerCircles[i].getValue() / w0;
+			res.firstExtremity = firstGeodesicExtremities[i];
+			res.secondExtremity = secondGeodesicExtremities[i].getPosition();
+
+			// store the result
+			result[i] = res;
+		}
+
+		//		// calibrate the results
+		//		if (calib.scaled())
+		//		{
+		//			this.fireStatusChanged(this, "Re-calibrating results");
+		//			for (int i = 0; i < nLabels; i++)
+		//			{
+		//				result[i] = result[i].recalibrate(calib);
+		//			}
+		//		}
+
+		// returns the results
+		return result;
+	}
+
+
+		// ==================================================
+		// Implementation of AlgoListener interface 
+
+		@Override
 	public void algoProgressChanged(AlgoEvent evt) 
 	{
 		fireProgressChanged(new Event(this, evt));
